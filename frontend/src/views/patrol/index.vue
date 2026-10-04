@@ -63,6 +63,8 @@
       </tbody>
     </table>
 
+    <RecheckPanel class="page-spacer" />
+
     <footer class="page-foot">
       <span>共 {{ total }} 条巡护任务记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
@@ -79,6 +81,7 @@ import {
   moduleMeta,
   runAction as applyAction,
 } from '@/api/local-service'
+import RecheckPanel from '@/components/RecheckPanel.vue'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('patrol')

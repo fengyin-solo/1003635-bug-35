@@ -1,6 +1,14 @@
 import { MODULE_BY_KEY } from '@/data/modules'
 import { allRows, listRows, resetRows, saveRows } from '@/data/local-store'
+import {
+  allowedRowActions,
+  projectEntries,
+  runBeltAction,
+} from '@/data/replant-service'
 import type { ActionResult, EntryRow, ModuleMeta, OverviewResult, PageResult } from '@/data/types'
+
+// 防火林带、防火隔离带的状态流转改由补植业务域编排：三处面板共用一条取数路径。
+const REPLANT_DOMAIN_KEYS = new Set(['firebelt', 'firebreak'])
 
 // 会写进数据的「往回走」动作：命中就把这条记录标成异常态，看板上能一眼看出来。
 const NEGATIVE_ACTIONS = ['撤销', '作废', '拒绝', '驳回', '停用', '忽略', '下线', '回滚']
@@ -24,11 +32,28 @@ export function filterRows(rows: EntryRow[], filters: Record<string, string>): E
 }
 
 export function listEntries(key: string, filters: Record<string, string> = {}): PageResult {
-  const matched = filterRows(listRows(key), filters)
+  // 林带与隔离带走共用取数路径：状态、缺株标记统一以验收记录投影后再筛选。
+  const sourceRows = REPLANT_DOMAIN_KEYS.has(key)
+    ? projectEntries(key as 'firebelt' | 'firebreak')
+    : listRows(key)
+  const matched = filterRows(sourceRows, filters)
   return { items: matched, total: matched.length, page: 1, size: matched.length }
 }
 
+/** 行级动作白名单：补植域模块按当前状态给动作，避免页面把反向流转也渲染出来。 */
+export function rowActionsFor(key: string, status: string): string[] {
+  if (REPLANT_DOMAIN_KEYS.has(key)) {
+    return allowedRowActions(key as 'firebelt' | 'firebreak', status)
+  }
+  const meta = MODULE_BY_KEY.get(key)
+  return meta ? meta.actions : []
+}
+
 export function runAction(key: string, id: number, action: string): ActionResult {
+  // 防火林带 / 防火隔离带：安排、验收、退化、割草恢复全部进补植业务域事务。
+  if (REPLANT_DOMAIN_KEYS.has(key)) {
+    return runBeltAction(key as 'firebelt' | 'firebreak', id, action)
+  }
   const meta = moduleMeta(key)
   const target = meta.actionTargets[action]
   if (!target) {

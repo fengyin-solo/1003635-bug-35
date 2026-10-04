@@ -54,6 +54,17 @@ export function resetRows(key: string): EntryRow[] {
   return rows
 }
 
+/**
+ * 整快照替换：业务域事务在内存里改完多份数据后一次性提交。
+ * 与逐条 saveRows 相比，这里只有一次 localStorage 写入，跨模块（林带 / 维护批次 / 归档）同生共死。
+ */
+export function replaceAllEntries(next: Record<string, EntryRow[]>): void {
+  cache = next
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  }
+}
+
 export function storageKey(): string {
   return STORAGE_KEY
 }

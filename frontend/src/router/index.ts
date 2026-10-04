@@ -19,6 +19,7 @@ const Firebelt = () => import('@/views/firebelt/index.vue')
 const Drill = () => import('@/views/drill/index.vue')
 const Burnpermit = () => import('@/views/burnpermit/index.vue')
 const Treegrowth = () => import('@/views/treegrowth/index.vue')
+const ReplantArchive = () => import('@/views/replant-archive/index.vue')
 
 const router = createRouter({
   history: createWebHistory(),
@@ -42,6 +43,7 @@ const router = createRouter({
     { path: '/drill', name: 'drill', component: Drill },
     { path: '/burnpermit', name: 'burnpermit', component: Burnpermit },
     { path: '/treegrowth', name: 'treegrowth', component: Treegrowth },
+    { path: '/replant-archive', name: 'replant-archive', component: ReplantArchive },
   ],
 })
 

@@ -44,10 +44,13 @@
       <tbody>
         <tr v-for="row in rows" :key="String(row.id)">
           <td v-for="column in columns" :key="column">{{ row[column] ?? '—' }}</td>
-          <td>{{ row.status }}</td>
+          <td>
+            {{ row.status }}
+            <span v-if="isProjected(row)" class="projected-tag" title="以最新验收记录为准投影">验收校正</span>
+          </td>
           <td class="row-actions">
             <button
-              v-for="action in actions"
+              v-for="action in availableActions(row)"
               :key="action"
               class="link"
               type="button"
@@ -55,6 +58,7 @@
             >
               {{ action }}
             </button>
+            <span v-if="!availableActions(row).length" class="muted-text">无可用动作</span>
           </td>
         </tr>
         <tr v-if="!rows.length">
@@ -62,6 +66,8 @@
         </tr>
       </tbody>
     </table>
+
+    <ReplantQueuePanel ref="queuePanel" class="page-spacer" @changed="reload" />
 
     <footer class="page-foot">
       <span>共 {{ total }} 条防火林带记录</span>
@@ -77,13 +83,15 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  rowActionsFor,
   runAction as applyAction,
 } from '@/api/local-service'
+import ReplantQueuePanel from '@/components/ReplantQueuePanel.vue'
+import type { ProjectedEntry } from '@/data/replant-types'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('firebelt')
 const columns = ["林带编号", "林带名称", "所属林区", "树种组成", "林带长度", "林带宽度", "种植年份", "林带状态"]
-const actions = ["安排补植", "确认补植", "标记退化"]
 const statuses = ["完好", "有缺株", "需补植", "已退化"]
 const stats = [{"label": "林带总数", "value": 0}, {"label": "完好条数", "value": 0}, {"label": "缺株条数", "value": 0}]
 
@@ -92,12 +100,21 @@ const total = ref(0)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
+const queuePanel = ref<InstanceType<typeof ReplantQueuePanel> | null>(null)
 const statusSummary = computed(() =>
   statuses.map((status: string) => ({
     status,
     count: rows.value.filter((row) => String(row.status) === status).length,
   })),
 )
+
+function availableActions(row: EntryRow): string[] {
+  return rowActionsFor(meta.key, String(row.status))
+}
+
+function isProjected(row: EntryRow): boolean {
+  return Boolean((row as ProjectedEntry).projected)
+}
 
 function resetFilters() {
   filters.value = {}
@@ -128,6 +145,7 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    queuePanel.value?.reload()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '防火林带列表读取失败'
   }

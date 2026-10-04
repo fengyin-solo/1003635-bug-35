@@ -44,10 +44,13 @@
       <tbody>
         <tr v-for="row in rows" :key="String(row.id)">
           <td v-for="column in columns" :key="column">{{ row[column] ?? '—' }}</td>
-          <td>{{ row.status }}</td>
+          <td>
+            {{ row.status }}
+            <span v-if="isProjected(row)" class="projected-tag" title="以最新验收记录为准投影">验收校正</span>
+          </td>
           <td class="row-actions">
             <button
-              v-for="action in actions"
+              v-for="action in availableActions(row)"
               :key="action"
               class="link"
               type="button"
@@ -55,6 +58,7 @@
             >
               {{ action }}
             </button>
+            <span v-if="!availableActions(row).length" class="muted-text">无可用动作</span>
           </td>
         </tr>
         <tr v-if="!rows.length">
@@ -62,6 +66,9 @@
         </tr>
       </tbody>
     </table>
+
+    <MaintenancePanel ref="maintenancePanelRef" class="page-spacer" />
+    <ReplantQueuePanel ref="queuePanel" class="page-spacer" @changed="reload" />
 
     <footer class="page-foot">
       <span>共 {{ total }} 条防火隔离带记录</span>
@@ -77,13 +84,16 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  rowActionsFor,
   runAction as applyAction,
 } from '@/api/local-service'
+import MaintenancePanel from '@/components/MaintenancePanel.vue'
+import ReplantQueuePanel from '@/components/ReplantQueuePanel.vue'
+import type { ProjectedEntry } from '@/data/replant-types'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('firebreak')
 const columns = ["隔离带编号", "所属林区", "起止坐标", "带宽米数", "建成日期", "最近维护日期", "植被恢复程度", "维护状态"]
-const actions = ["安排维护", "确认恢复", "标记荒废"]
 const statuses = ["正常", "需割草", "需补植", "已荒废"]
 const stats = [{"label": "隔离带总长", "value": 0}, {"label": "需维护条数", "value": 0}, {"label": "荒废条数", "value": 0}]
 
@@ -92,12 +102,22 @@ const total = ref(0)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
+const queuePanel = ref<InstanceType<typeof ReplantQueuePanel> | null>(null)
+const maintenancePanelRef = ref<InstanceType<typeof MaintenancePanel> | null>(null)
 const statusSummary = computed(() =>
   statuses.map((status: string) => ({
     status,
     count: rows.value.filter((row) => String(row.status) === status).length,
   })),
 )
+
+function availableActions(row: EntryRow): string[] {
+  return rowActionsFor(meta.key, String(row.status))
+}
+
+function isProjected(row: EntryRow): boolean {
+  return Boolean((row as ProjectedEntry).projected)
+}
 
 function resetFilters() {
   filters.value = {}
@@ -128,6 +148,8 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    maintenancePanelRef.value?.reload()
+    queuePanel.value?.reload()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '防火隔离带列表读取失败'
   }
