@@ -63,6 +63,48 @@
       </tbody>
     </table>
 
+    <section class="review-panel">
+      <header class="review-head">
+        <h3>补植复查项</h3>
+        <span class="review-tip">由林带补植验收自动同步生成，一条验收对应一条复查</span>
+      </header>
+      <table v-if="reviews.length" class="data-table">
+        <thead>
+          <tr>
+            <th>复查编号</th>
+            <th>关联林区</th>
+            <th>复查内容</th>
+            <th>巡护员</th>
+            <th>计划复查日</th>
+            <th>复查状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in reviews" :key="item.id">
+            <td>{{ item.reviewNo }}</td>
+            <td>{{ item.area }}</td>
+            <td>{{ item.note }}</td>
+            <td>{{ item.reviewer }}</td>
+            <td>{{ item.reviewDate }}</td>
+            <td>{{ item.status }}</td>
+            <td class="row-actions">
+              <button
+                v-if="item.status === '待复查'"
+                class="link"
+                type="button"
+                @click="finishReview(item.id)"
+              >
+                登记复查结果
+              </button>
+              <span v-else class="muted-text">已完成</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else class="empty-state">暂无补植复查项：林带补植验收通过后会自动生成</p>
+    </section>
+
     <footer class="page-foot">
       <span>共 {{ total }} 条巡护任务记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
@@ -79,6 +121,11 @@ import {
   moduleMeta,
   runAction as applyAction,
 } from '@/api/local-service'
+import {
+  completeReview,
+  patrolReviewRows,
+} from '@/data/repair-service'
+import type { PatrolReviewItem } from '@/data/repair-types'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('patrol')
@@ -92,6 +139,7 @@ const total = ref(0)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
+const reviews = ref<PatrolReviewItem[]>([])
 const statusSummary = computed(() =>
   statuses.map((status: string) => ({
     status,
@@ -112,6 +160,12 @@ function openCreate() {
   errorMessage.value = '巡护任务登记入口尚未接入审批流'
 }
 
+function finishReview(id: number) {
+  const result = completeReview(id)
+  errorMessage.value = result.ok ? '' : result.message
+  reload()
+}
+
 function runAction(action: string, row: EntryRow) {
   errorMessage.value = ''
   const result = applyAction(meta.key, Number(row.id), action)
@@ -128,6 +182,8 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    // 补植验收同步生成的复查项：别的模块只负责读取与登记结果。
+    reviews.value = patrolReviewRows()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '巡护任务列表读取失败'
   }
@@ -135,3 +191,31 @@ function reload() {
 
 onMounted(reload)
 </script>
+
+<style scoped>
+.review-panel {
+  margin-top: 18px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.review-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.review-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.review-tip {
+  color: var(--muted);
+  font-size: 12px;
+}
+.muted-text {
+  color: var(--muted);
+  font-size: 12px;
+}
+</style>

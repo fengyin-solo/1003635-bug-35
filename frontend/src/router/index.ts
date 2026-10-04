@@ -16,6 +16,7 @@ const Duty = () => import('@/views/duty/index.vue')
 const Supply = () => import('@/views/supply/index.vue')
 const Forestroad = () => import('@/views/forestroad/index.vue')
 const Firebelt = () => import('@/views/firebelt/index.vue')
+const RepairArchive = () => import('@/views/repair-archive/index.vue')
 const Drill = () => import('@/views/drill/index.vue')
 const Burnpermit = () => import('@/views/burnpermit/index.vue')
 const Treegrowth = () => import('@/views/treegrowth/index.vue')
@@ -39,6 +40,7 @@ const router = createRouter({
     { path: '/supply', name: 'supply', component: Supply },
     { path: '/forestroad', name: 'forestroad', component: Forestroad },
     { path: '/firebelt', name: 'firebelt', component: Firebelt },
+    { path: '/repair-archive', name: 'repair-archive', component: RepairArchive },
     { path: '/drill', name: 'drill', component: Drill },
     { path: '/burnpermit', name: 'burnpermit', component: Burnpermit },
     { path: '/treegrowth', name: 'treegrowth', component: Treegrowth },
